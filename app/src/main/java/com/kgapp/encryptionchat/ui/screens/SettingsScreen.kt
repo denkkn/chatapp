@@ -76,13 +76,13 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = cardColors
             ) {
-                SectionTitle("安全")
+                SectionTitle("个人信息")
                 EntryRow(
-                    title = "应用锁与胁迫模式",
-                    subtitle = "PIN 解锁与胁迫模式设置",
-                    icon = Icons.Outlined.Security,
-                    background = groupBackground,
-                    onClick = onOpenSecurity
+                    title = "个人信息",
+                    subtitle = "头像/名称",
+                    //icon = Icons.Outlined.Security,
+                    //background = groupBackground,
+                    //onClick = onOpenSecurity
                 )
                 EntryRow(
                     title = "密钥管理",
@@ -90,6 +90,19 @@ fun SettingsScreen(
                     icon = Icons.Outlined.Security,
                     background = groupBackground,
                     onClick = onOpenKeyManagement
+                )
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = cardColors
+            ) {
+                SectionTitle("安全")
+                EntryRow(
+                    title = "应用锁与胁迫模式",
+                    subtitle = "PIN 解锁与胁迫模式设置",
+                    icon = Icons.Outlined.Security,
+                    background = groupBackground,
+                    onClick = onOpenSecurity
                 )
             }
             Card(
