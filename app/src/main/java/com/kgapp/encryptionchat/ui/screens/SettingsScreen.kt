@@ -80,9 +80,9 @@ fun SettingsScreen(
                 EntryRow(
                     title = "个人信息",
                     subtitle = "头像/名称",
-                    //icon = Icons.Outlined.Security,
-                    //background = groupBackground,
-                    //onClick = onOpenSecurity
+                    icon = Icons.Outlined.Security,
+                    background = groupBackground,
+                    onClick = onOpenSecurity
                 )
                 EntryRow(
                     title = "密钥管理",
