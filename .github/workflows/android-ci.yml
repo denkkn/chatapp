@@ -1,12 +1,7 @@
-name: Android CI
-
-permissions:
-  contents: write
-
 on:
   push:
     branches: [ main ]
-    tags: [ "v*" ]
+    tags: [ "v*" ]  # 只有 tag 才完整构建
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -14,77 +9,34 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: "11"
+          java-version: "17"
           distribution: "temurin"
-          cache: gradle
-
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-
-      # 关键：把你 Secrets 里的 base64 keystore 还原成文件
-      - name: Decode keystore
+          
+      # 只在 tag 推送时签名
+      - name: Decode keystore (tag only)
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > $GITHUB_WORKSPACE/release.jks
-          ls -lah $GITHUB_WORKSPACE/release.jks
-
-      # 关键：所有构建都只走 Release + 固定签名
-      - name: Build Release APK (signed)
+          
+      - name: Build APK
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
-            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
-            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
-            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
-
-      - name: Upload Release APK (all runs)
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-apk-${{ github.run_number }}
-          path: app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-
-      - name: Create GitHub Release (tag only)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          name: EncryptionChat ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          files: app/build/outputs/apk/release/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # OSS 上传：仅 tag
-      - name: Install ossutil
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          curl -L https://gosspublic.alicdn.com/ossutil/1.7.9/ossutil64 -o /usr/local/bin/ossutil
-          chmod +x /usr/local/bin/ossutil
-
-      - name: Upload Release APK to OSS (tag only)
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          OSS_KEY: ${{ secrets.ALI_OSS_KEY }}
-          OSS_SECRET: ${{ secrets.ALI_OSS_SECRET }}
-        run: |
-          ossutil config \
-            --access-key-id=$OSS_KEY \
-            --access-key-secret=$OSS_SECRET \
-            --endpoint=oss-cn-guangzhou.aliyuncs.com
-
-          ossutil cp \
-            app/build/outputs/apk/release/*.apk \
-            oss://kgyydsgithub/ci-builds/app-release.apk \
-            -f
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # tag 推送：签名构建
+            ./gradlew assembleRelease \
+              -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
+              -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+              -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+              -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+          else
+            # 普通推送：不签名构建
+            ./gradlew assembleRelease
+          fi
